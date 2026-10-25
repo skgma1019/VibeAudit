@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "resolveJsonModule": true,
+    "paths": { "@/*": ["./src/*"] },
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": ".test-build",
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": [
+    "tests/**/*.test.ts",
+    "src/lib/project/**/*.ts",
+    "src/lib/security/**/*.ts",
+    "src/lib/ai/**/*.ts",
+    "src/lib/server/analysis-service.ts",
+    "src/lib/ai/**/*.ts",
+    "src/lib/analysis/**/*.ts",
+    "src/lib/audit/dashboard.ts",
+    "src/lib/audit/score.ts",
+    "src/lib/audit/deduplicate.ts",
+    "src/lib/audit/persistence.ts",
+    "src/schemas/**/*.ts",
+    "src/types/project.ts",
+    "src/types/analysis.ts",
+    "src/types/audit.ts",
+    "src/types/ai.ts"
+  ],
+  "exclude": ["node_modules", ".next", ".test-build"]
+}

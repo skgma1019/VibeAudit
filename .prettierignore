@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+dist
+coverage
+.test-build
+supabase/.temp
+package-lock.json
+next-env.d.ts
+PRD.md
+TECH_STACK.md
+DESIGN.md
