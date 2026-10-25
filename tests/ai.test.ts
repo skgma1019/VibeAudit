@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildAIAnalyzePayload } from "../src/lib/ai/payload";
 import { AI_LIMITS } from "../src/lib/ai/constants";
+import { GEMINI_RESPONSE_JSON_SCHEMA } from "../src/lib/ai/structured-output";
 import {
   makeAuditPrompt,
   AUDIT_SYSTEM_INSTRUCTION,
@@ -13,7 +14,11 @@ import {
   validateAIResponse,
 } from "../src/lib/ai/validate";
 import { runAIAnalysis } from "../src/lib/server/analysis-service";
-import { analyzeRequestSchema, type RawAIResponse } from "../src/schemas/ai";
+import {
+  analyzeRequestSchema,
+  rawAIResponseSchema,
+  type RawAIResponse,
+} from "../src/schemas/ai";
 import type {
   AnalysisResult,
   AnalysisCoverage,
@@ -292,6 +297,22 @@ test("mock structured response is validated and kept separate from scores", () =
   assert.equal(result.aiStatus, "COMPLETE");
   assert.equal(result.issueInsights[0].origin, "AI");
   assert.deepEqual(audit.scores, originalScores);
+});
+
+test("Gemini nested array limits stay within Zod limits for multi-issue audits", () => {
+  const schema = GEMINI_RESPONSE_JSON_SCHEMA.properties;
+  assert.equal(schema.summary.properties.strengths.maxItems, 5);
+  assert.equal(schema.summary.properties.topPriorities.maxItems, 3);
+  assert.equal(schema.issueInsights.maxItems, 5);
+  assert.equal(schema.potentialIssues.maxItems, 3);
+  assert.equal(
+    schema.issueInsights.items.properties.relatedIssueIds.maxItems,
+    5,
+  );
+  assert.equal(schema.issueInsights.items.properties.locations.maxItems, 5);
+  const oversized = validResponse("fixture-issue");
+  oversized.issueInsights[0].relatedIssueIds = Array(11).fill("fixture-issue");
+  assert.equal(rawAIResponseSchema.safeParse(oversized).success, false);
 });
 
 test("invalid issue IDs and invented locations are removed and mark AI coverage partial", () => {

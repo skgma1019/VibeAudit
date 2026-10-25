@@ -2,6 +2,7 @@ import "server-only";
 
 import { GoogleGenAI } from "@google/genai";
 import { AI_LIMITS } from "../ai/constants";
+import { GEMINI_RESPONSE_JSON_SCHEMA } from "../ai/structured-output";
 import { GeminiCallError, type GeminiAdapter } from "../ai/provider";
 import { AUDIT_SYSTEM_INSTRUCTION } from "@/lib/ai/prompt";
 import { getGeminiConfig } from "./env";
@@ -28,23 +29,7 @@ export class GoogleGeminiAdapter implements GeminiAdapter {
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          responseJsonSchema: {
-            type: "OBJECT",
-            properties: {
-              summary: {
-                type: "OBJECT",
-                properties: {
-                  overview: { type: "STRING" },
-                  strengths: { type: "ARRAY", items: { type: "STRING" } },
-                  topPriorities: { type: "ARRAY", items: { type: "STRING" } },
-                },
-                required: ["overview", "strengths", "topPriorities"],
-              },
-              issueInsights: { type: "ARRAY", items: insightJsonSchema },
-              potentialIssues: { type: "ARRAY", items: insightJsonSchema },
-            },
-            required: ["summary", "issueInsights", "potentialIssues"],
-          },
+          responseJsonSchema: GEMINI_RESPONSE_JSON_SCHEMA,
           maxOutputTokens: AI_LIMITS.maxOutputTokens,
           abortSignal,
           systemInstruction: AUDIT_SYSTEM_INSTRUCTION,
@@ -73,45 +58,3 @@ export class GoogleGeminiAdapter implements GeminiAdapter {
     }
   }
 }
-
-const insightJsonSchema = {
-  type: "OBJECT",
-  properties: {
-    type: {
-      type: "STRING",
-      enum: ["ISSUE_EXPLANATION", "IMPROVEMENT", "POTENTIAL_ISSUE"],
-    },
-    confidence: { type: "STRING", enum: ["HIGH", "MEDIUM", "LOW"] },
-    title: { type: "STRING" },
-    explanation: { type: "STRING" },
-    impact: { type: "STRING" },
-    suggestion: { type: "STRING" },
-    relatedIssueIds: { type: "ARRAY", items: { type: "STRING" } },
-    locations: {
-      type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          filePath: { type: "STRING" },
-          line: { type: "INTEGER" },
-          column: { type: "INTEGER" },
-        },
-        required: ["filePath", "line"],
-      },
-    },
-    evidenceStatus: {
-      type: "STRING",
-      enum: ["SUPPORTED", "PARTIAL", "UNVERIFIED"],
-    },
-  },
-  required: [
-    "type",
-    "confidence",
-    "title",
-    "explanation",
-    "suggestion",
-    "relatedIssueIds",
-    "locations",
-    "evidenceStatus",
-  ],
-} as const;
