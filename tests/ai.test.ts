@@ -196,18 +196,27 @@ function mockAdapter(
   };
 }
 
-async function withTestEnvironment<T>(run: () => Promise<T>) {
+async function withTestEnvironment<T>(
+  run: () => Promise<T>,
+  nodeEnv = "test",
+  apiKey: string | null = "fixture-key",
+) {
   const environment = process.env as unknown as Record<
     string,
     string | undefined
   >;
   const previous = environment.NODE_ENV;
-  environment.NODE_ENV = "test";
+  const previousKey = environment.GEMINI_API_KEY;
+  environment.NODE_ENV = nodeEnv;
+  if (apiKey === null) delete environment.GEMINI_API_KEY;
+  else environment.GEMINI_API_KEY = apiKey;
   try {
     return await run();
   } finally {
     if (previous === undefined) delete environment.NODE_ENV;
     else environment.NODE_ENV = previous;
+    if (previousKey === undefined) delete environment.GEMINI_API_KEY;
+    else environment.GEMINI_API_KEY = previousKey;
   }
 }
 
@@ -427,9 +436,63 @@ test("service uses the mock adapter, preserves rule scores, and keeps AI separat
   });
 });
 
-test("service retries only provider transient errors once and returns safe failures", async () => {
+test("production with a server key calls the provider and preserves Rule scores", async () => {
+  await withTestEnvironment(async () => {
+    const { payload, audit } = inputs();
+    const scores = structuredClone(audit.scores);
+    let calls = 0;
+    const result = await runAIAnalysis(payload, {
+      adapter: mockAdapter(() => {
+        calls++;
+        return validResponse(payload.ruleIssues[0].id);
+      }),
+    });
+    assert.equal(calls, 1);
+    assert.equal(result.aiStatus, "COMPLETE");
+    assert.deepEqual(audit.scores, scores);
+  }, "production");
+});
+
+test("production without a server key skips before provider use", async () => {
+  await withTestEnvironment(
+    async () => {
+      const { payload } = inputs();
+      let calls = 0;
+      const result = await runAIAnalysis(payload, {
+        adapter: mockAdapter(() => {
+          calls++;
+          return validResponse(payload.ruleIssues[0].id);
+        }),
+      });
+      assert.equal(result.aiStatus, "SKIPPED");
+      if (result.aiStatus === "SKIPPED")
+        assert.equal(result.errorCode, "AI_NOT_CONFIGURED");
+      assert.equal(calls, 0);
+    },
+    "production",
+    null,
+  );
+});
+
+test("development continues to call the provider with a server key", async () => {
   await withTestEnvironment(async () => {
     const { payload } = inputs();
+    let calls = 0;
+    const result = await runAIAnalysis(payload, {
+      adapter: mockAdapter(() => {
+        calls++;
+        return validResponse(payload.ruleIssues[0].id);
+      }),
+    });
+    assert.equal(calls, 1);
+    assert.equal(result.aiStatus, "COMPLETE");
+  }, "development");
+});
+
+test("service retries only provider transient errors once and returns safe failures", async () => {
+  await withTestEnvironment(async () => {
+    const { payload, audit } = inputs();
+    const scores = structuredClone(audit.scores);
     let calls = 0;
     const recovered = await runAIAnalysis(payload, {
       adapter: mockAdapter(() => {
@@ -468,6 +531,7 @@ test("service retries only provider transient errors once and returns safe failu
         true,
       );
     }
+    assert.deepEqual(audit.scores, scores);
 
     const noAdapter = await runAIAnalysis(payload);
     assert.equal(noAdapter.aiStatus, "SKIPPED");

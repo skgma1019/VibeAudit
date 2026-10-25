@@ -7,6 +7,7 @@ import { callWithProviderRetry } from "../ai/retry";
 import { GeminiCallError, type GeminiAdapter } from "../ai/provider";
 import { sanitizeAnalyzePayload, validateAIResponse } from "../ai/validate";
 import type { AnalyzeRequest } from "../../schemas/ai";
+import { getGeminiConfig } from "./env";
 
 export type AnalysisServiceResponse =
   | { aiStatus: "SKIPPED"; errorCode: "AI_NOT_CONFIGURED"; message: string }
@@ -30,20 +31,12 @@ export async function runAIAnalysis(
   input: AnalyzeRequest,
   options: { adapter?: GeminiAdapter; signal?: AbortSignal } = {},
 ): Promise<AnalysisServiceResponse> {
-  if (process.env.NODE_ENV === "production") {
+  if (!getGeminiConfig() || !options.adapter) {
     return {
       aiStatus: "SKIPPED",
       errorCode: "AI_NOT_CONFIGURED",
       message:
-        "AI analysis will be enabled after account authentication is configured.",
-    };
-  }
-  if (!options.adapter) {
-    return {
-      aiStatus: "SKIPPED",
-      errorCode: "AI_NOT_CONFIGURED",
-      message:
-        "AI analysis is not configured. Add GEMINI_API_KEY to the local server environment.",
+        "AI analysis is not configured. Add GEMINI_API_KEY to the server environment.",
     };
   }
 
