@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AI_LIMITS } from "../lib/ai/constants";
+import { MAX_REPORTED_FILE_COUNT } from "../lib/project/limits";
 
 const text = (max: number = AI_LIMITS.maxStringChars) =>
   z.string().min(1).max(max);
@@ -103,7 +104,7 @@ export const analyzeRequestSchema = z
     projectSummary: z
       .object({
         stack: z.array(text(64)).max(20),
-        fileCount: z.number().int().nonnegative().max(1_000),
+        fileCount: z.number().int().nonnegative().max(MAX_REPORTED_FILE_COUNT),
         analyzedFileCount: z.number().int().nonnegative().max(1_000),
         scores: z
           .object({

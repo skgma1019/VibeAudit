@@ -259,6 +259,19 @@ test("request schema rejects undeclared raw file fields and oversized snippets",
   );
 });
 
+test("AI payload reports excluded files without raising the analyzed-file limit", () => {
+  const { analysis, audit } = inputs();
+  const payload = buildAIAnalyzePayload({
+    metadata: { ...metadata, totalFiles: 1_205, excludedFiles: 1_204 },
+    contents,
+    analysis,
+    audit,
+  });
+  assert.equal(payload.projectSummary.fileCount, 1_205);
+  assert.equal(payload.projectSummary.analyzedFileCount, 1);
+  assert.equal(analyzeRequestSchema.safeParse(payload).success, true);
+});
+
 test("mock structured response is validated and kept separate from scores", () => {
   const { payload, audit } = inputs();
   const originalScores = structuredClone(audit.scores);

@@ -5,4 +5,7 @@ export const ANALYSIS_LIMITS = {
   maxFiles: 1_000,
 } as const;
 
+/** PostgreSQL integer bound for the reported total, including excluded files. */
+export const MAX_REPORTED_FILE_COUNT = 2_147_483_647;
+
 export const FILE_READ_CONCURRENCY = 4;

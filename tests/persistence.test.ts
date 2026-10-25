@@ -122,6 +122,26 @@ test("AI-less DTOs allow a null summary for idle, skipped, and failed audits", (
   }
 });
 
+test("excluded files can raise the reported total above the 1,000 analyzed-file limit", () => {
+  const request = toPersistedAudit({
+    metadata: {
+      ...metadata,
+      totalFiles: 1_205,
+      includedFiles: 2,
+      excludedFiles: 1_203,
+    },
+    analysis,
+    audit,
+    ai: null,
+    aiStatus: "IDLE",
+    projectId: null,
+    requestId: crypto.randomUUID(),
+  });
+  assert.equal(request.audit.fileCount, 1_205);
+  assert.equal(request.audit.analyzedFileCount, 2);
+  assert.equal(persistedAuditSchema.safeParse(request).success, true);
+});
+
 test("Audit API persistence validation accepts null and normal summaries but rejects oversized text", () => {
   const request = toPersistedAudit({
     metadata,

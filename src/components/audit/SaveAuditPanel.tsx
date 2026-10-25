@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useSupabaseAuth } from "@/components/auth/SupabaseAuthProvider";
@@ -33,20 +33,6 @@ export function SaveAuditPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [requestId] = useState(() => crypto.randomUUID());
   const [retryKey, setRetryKey] = useState(0);
-  const payload = useMemo(
-    () =>
-      toPersistedAudit({
-        metadata,
-        analysis,
-        audit,
-        ai,
-        aiStatus,
-        projectId: projectId || null,
-        requestId,
-      }),
-    [ai, aiStatus, analysis, audit, metadata, projectId, requestId],
-  );
-
   useEffect(() => {
     if (auth.status !== "ready") return;
     let active = true;
@@ -76,6 +62,15 @@ export function SaveAuditPanel({
     try {
       const session = await auth.retry();
       if (!session.available) throw new Error("session unavailable");
+      const payload = toPersistedAudit({
+        metadata,
+        analysis,
+        audit,
+        ai,
+        aiStatus,
+        projectId: projectId || null,
+        requestId,
+      });
       const response = await fetch("/api/audits", {
         method: "POST",
         headers: { "content-type": "application/json" },

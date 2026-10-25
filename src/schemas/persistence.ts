@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_REPORTED_FILE_COUNT } from "../lib/project/limits";
 
 const uuid = z.string().uuid();
 const relativePath = z
@@ -60,7 +61,7 @@ export const persistedAuditSchema = z
           STRUCTURE: z.enum(["FULL", "PARTIAL", "LIMITED"]),
           DEPENDENCY: z.enum(["FULL", "PARTIAL", "LIMITED"]),
         }),
-        fileCount: z.number().int().min(0).max(1000),
+        fileCount: z.number().int().min(0).max(MAX_REPORTED_FILE_COUNT),
         analyzedFileCount: z.number().int().min(0).max(1000),
         ruleVersion: z.string().min(1).max(80),
         scoreVersion: z.string().min(1).max(80),
