@@ -23,6 +23,7 @@ export class GoogleGeminiAdapter implements GeminiAdapter {
     const abortSignal = requestSignal
       ? AbortSignal.any([controller.signal, requestSignal])
       : controller.signal;
+    const startedAt = Date.now();
     try {
       const response = await client.models.generateContent({
         model: config.model,
@@ -43,12 +44,35 @@ export class GoogleGeminiAdapter implements GeminiAdapter {
       }
     } catch (error) {
       if (error instanceof GeminiCallError) throw error;
-      if (controller.signal.aborted || requestSignal?.aborted)
-        throw new GeminiCallError("TIMEOUT");
       const status =
         typeof error === "object" && error !== null && "status" in error
           ? Number((error as { status?: unknown }).status)
           : undefined;
+      const rawName =
+        typeof error === "object" && error !== null && "name" in error
+          ? (error as { name?: unknown }).name
+          : undefined;
+      const providerErrorName =
+        typeof rawName === "string" &&
+        /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(rawName)
+          ? rawName
+          : "Unknown";
+      console.error(
+        JSON.stringify({
+          event: "gemini_provider_failure",
+          model: config.model,
+          providerStatus:
+            status && Number.isInteger(status) && status >= 100 && status <= 599
+              ? status
+              : null,
+          providerErrorName,
+          durationMs: Date.now() - startedAt,
+          timedOut: controller.signal.aborted,
+          requestAborted: Boolean(requestSignal?.aborted),
+        }),
+      );
+      if (controller.signal.aborted || requestSignal?.aborted)
+        throw new GeminiCallError("TIMEOUT");
       if (status === 429) throw new GeminiCallError("RATE_LIMIT", status);
       if (status && status >= 500)
         throw new GeminiCallError("UNAVAILABLE", status);

@@ -61,15 +61,41 @@ export async function runAIAnalysis(
 
   const adapter = options.adapter;
   const prompt = makeAuditPrompt(safeInput);
+  const startedAt = Date.now();
+  let providerAttempts = 0;
   try {
     // Retry applies to the provider request only; a malformed response is never retried.
     const raw = await callWithProviderRetry(
-      () => adapter.analyze(prompt, options.signal),
+      () => {
+        providerAttempts++;
+        return adapter.analyze(prompt, options.signal);
+      },
       { signal: options.signal },
     );
     const result = validateAIResponse(raw, safeInput);
     return { aiStatus: result.aiStatus, result };
   } catch (error) {
+    const rawName = error instanceof Error ? error.name : undefined;
+    console.error(
+      JSON.stringify({
+        event: "ai_analysis_failure",
+        errorKind:
+          error instanceof GeminiCallError
+            ? error.kind
+            : error instanceof ZodError
+              ? "ZOD_VALIDATION"
+              : "UNEXPECTED",
+        providerStatus:
+          error instanceof GeminiCallError ? (error.status ?? null) : null,
+        errorName:
+          rawName && /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(rawName)
+            ? rawName
+            : "Unknown",
+        providerAttempts,
+        durationMs: Date.now() - startedAt,
+        requestAborted: Boolean(options.signal?.aborted),
+      }),
+    );
     if (
       error instanceof ZodError ||
       (error instanceof GeminiCallError && error.kind === "INVALID_RESPONSE")

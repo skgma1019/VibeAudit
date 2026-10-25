@@ -142,6 +142,16 @@ export async function POST(request: Request) {
   const reservation = await auth.client.rpc("reserve_ai_request", {
     p_request_id: requestId,
   });
+  console.info(
+    JSON.stringify({
+      event: "ai_reservation",
+      result: reservation.error
+        ? "RPC_ERROR"
+        : ["RESERVED", "RATE_LIMITED", "IN_PROGRESS"].includes(reservation.data)
+          ? reservation.data
+          : "UNKNOWN",
+    }),
+  );
   if (reservation.error)
     return NextResponse.json(
       {
